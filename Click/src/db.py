@@ -39,15 +39,16 @@ class User(db.Model):
             'met_users': [m.serialize() for m in self.met_users]
         }
 
-        def serialize(self):
-            return {
-                'id': self.id,
-                'name': self.name,
-                'netid': self.netid,
-                'year': self.year,
-                'school': self.school,
-                'interests': [i.serialize() for i in self.interests]
-            }
+    def serialize(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'netid': self.netid,
+            'year': self.year,
+            'school': self.school,
+            'interests': [i.serialize() for i in self.interests]
+        }
+
 
 class Interest(db.Model):
     __tablename__ = 'Interests_Table'
