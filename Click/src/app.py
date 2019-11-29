@@ -150,5 +150,54 @@ def delete_user_interest():
     db.session.commit()
     return json.dumps({'success': True, 'data': user.serialize()}), 200
 
+# get recommended users for a specific user
+@app.route('/api/user/interest/', methods=['GET'])
+def get_recommendation():
+    post_body = json.loads(request.data)
+    net_id = post_body.get('netid')
+    user = User.query.filter_by(netid=net_id).first()
+    if not user:
+        return json.dumps({'success': False, 'error': 'No users registered!'}), 409
+    else:
+        return json.dumps({'success': True, 'data':user.serialize_long()}), 201
+
+# create friend requests
+@app.route('/api/request/', methods=['POST'])
+def create_request():
+    post_body = json.loads(request.data)
+    sender_netid = post_body.get('sender_netid', "")
+    receiver_netid = post_body.get('receiver_netid', "")
+
+    sender = User.query.filter_by(netid=sender_netid).first()
+    receiver = User.query.filter_by(netid=receiver_netid).first()
+
+    if not sender or receiver:
+        return json.dumps({'success': False, 'error': 'Users not found!'}), 409
+
+    request = Request.query.filter_by(sender = sender, receiver = receiver).first()
+    if not request:
+        request = Request(
+            accepted = False
+        )
+        request.sender.append
+        db.session.add(request)
+        db.session.commit()
+        return json.dumps({'success': True, 'data': request.serialize()}), 201
+    else:
+        return json.dumps({'success': False, 'error': 'Request already exists!'}), 409
+
+# accept friend request
+@app.route('/users/<int:user_id>/', methods=['POST'])
+def update_user_accept_request(user_id):
+    user = User.query.filter_by(id=user_id).first()
+    if not user:
+        return json.dumps({'success': False, 'error': 'User not found'}), 404
+    post_body = json.loads(request.data)
+    accepted = Request.query.filter_by(accepted=post_body.get('accepted')).first()
+    if accepted == False: 
+        return json.dumps({'success': False, 'error': 'Error'}), 404
+    return json.dumps({'success': True, 'data': user.serialize_long()}), 200
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
