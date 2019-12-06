@@ -1,0 +1,6 @@
+version: '3'
+services:
+    backend:
+        image: icejinx33/clickbackend
+        ports:
+            - "5000:5000"
