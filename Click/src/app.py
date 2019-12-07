@@ -1,6 +1,6 @@
 import json
 import db
-from db import db, User, Interest
+from db import db, User, Interest, Request, Friend
 from flask import Flask, request
 import os
 
@@ -29,9 +29,22 @@ def get_user():
     net_id = post_body.get('netid', '')
     user = User.query.filter_by(netid = net_id).first()
     if not user:
-        return json.dumps({'success': False, 'error': 'User not found!'}), 409
+        return json.dumps({'success': False, 'error': 'User not found!'}), 404
     else:
-        return json.dumps({'success': True, 'data': user.serialize_long()}), 201
+        return json.dumps({'success': True, 'data': user.serialize_long()}), 200
+
+# get all of a user's friends
+@app.route('/api/user/friends/', methods=['GET'])
+def get_friends():
+    post_body = json.loads(request.data)
+    net_id = post_body.get('netid', '')
+    user = User.query.filter_by(netid = net_id).first()
+    if not user:
+        return json.dumps({'success': False, 'error': 'User not found!'}), 404
+    else:
+        friends = user.met_users
+        res = {'success': True, 'data': [f.serialize() for f in friends]}
+        return json.dumps(res), 200
 
 # create a user
 @app.route('/api/user/', methods=['POST'])
@@ -60,9 +73,14 @@ def delete_user():
     user = User.query.filter_by(netid = net_id).first()
     if not user:
         return json.dumps({'success': False, 'error': 'User not found!'}), 404
+
+    all_friends = Friend.query.all()
+    for f in all_friends:
+        if f.netid == user.netid:
+            db.session.delete(f)
     db.session.delete(user)
     db.session.commit()
-    return json.dumps({'success': True, 'data': user.serialize_long()}), 200
+    return json.dumps({'success': True, 'data': user.serialize_long()}), 201
 
 # get all interests
 @app.route('/api/interest/all/', methods=['GET'])
@@ -78,9 +96,9 @@ def get_interest():
     interest_name = post_body.get('interest_name', '')
     interest = Interest.query.filter_by(interest_name = interest_name).first()
     if not interest:
-        return json.dumps({'success': False, 'error': 'Interest not found!'}), 409
+        return json.dumps({'success': False, 'error': 'Interest not found!'}), 404
     else:
-        return json.dumps({'success': True, 'data': interest.serialize_long()}), 201
+        return json.dumps({'success': True, 'data': interest.serialize_long()}), 200
 
 # create an interest tag
 @app.route('/api/interest/', methods=['POST'])
@@ -96,7 +114,7 @@ def create_interest():
         db.session.commit()
         return json.dumps({'success': True, 'data': interest.serialize()}), 201
     else:
-        return json.dumps({'success': False, 'error': 'Interest already exists!'}), 409
+        return json.dumps({'success': False, 'error': 'Interest already exists!'}), 404
 
 # update a user's profile info
 @app.route('/api/user/update/', methods=['POST'])
@@ -148,7 +166,155 @@ def delete_user_interest():
     user.interests.remove(interest)
     db.session.add(user)
     db.session.commit()
-    return json.dumps({'success': True, 'data': user.serialize()}), 200
+    return json.dumps({'success': True, 'data': user.serialize()}), 201
+
+# delete an interest tag
+@app.route('/api/interest/', methods=['DELETE'])
+def delete_interest_tag():
+    delete_body = json.loads(request.data)
+    interest_name = delete_body.get('interest_name', '')
+    interest = Interest.query.filter_by(interest_name = interest_name).first()
+    if not interest:
+        return json.dumps({'success': False, 'error': 'Interest not found!'}), 404
+    db.session.delete(interest)
+    db.session.commit()
+    return json.dumps({'success': True, 'data': interest.serialize()}), 201
+
+# get recommended users for a specific user
+@app.route('/api/user/rec/', methods=['GET'])
+def get_recommendation():
+    post_body = json.loads(request.data)
+    net_id = post_body.get('netid')
+    user = User.query.filter_by(netid=net_id).first()
+    if not user:
+        return json.dumps({'success': False, 'error': 'User not found!'}), 404
+    else:
+        rec_users = []
+        for i in user.interests:
+            for u in i.users:
+                if (u is not user and u not in user.met_users and u not in rec_users):
+                    rec_users.append(u)
+        res = {'success': True, 'data': [us.serialize() for us in rec_users]}
+        return json.dumps(res), 200
+
+# get all requests
+@app.route('/api/request/all/', methods=['GET'])
+def get_all_requests():
+    reqs = Request.query.all()
+    res = {'success': True, 'data': [r.serialize() for r in reqs]}
+    return json.dumps(res), 200
+
+# get a request by id
+@app.route('/api/request/', methods=['GET'])
+def get_request():
+    post_body = json.loads(request.data)
+    req_id = post_body.get('request_id', '')
+    req = Request.query.filter_by(id = req_id).first()
+    if not req:
+        return json.dumps({'success': False, 'error': 'Request not found!'}), 404
+    else:
+        return json.dumps({'success': True, 'data': req.serialize()}), 200
+
+# get all pending requests received by a user
+@app.route('/api/request/user/rec/', methods=['GET'])
+def get_pending_receive_request():
+    post_body = json.loads(request.data)
+    net_id = post_body.get('netid')
+    user = User.query.filter_by(netid = net_id).first()
+    res = {'success': True, 'data': [r.serialize() for r in user.requests_rec]}
+    return json.dumps(res), 200
+
+# get all pending requests sent by a user
+@app.route('/api/request/user/sent/', methods=['GET'])
+def get_pending_sent_request():
+    post_body = json.loads(request.data)
+    net_id = post_body.get('netid')
+    user = User.query.filter_by(netid = net_id).first()
+    res = {'success': True, 'data': [r.serialize() for r in user.requests_sent]}
+    return json.dumps(res), 200
+
+# create a friend request
+@app.route('/api/request/', methods=['POST'])
+def create_request():
+    post_body = json.loads(request.data)
+    sender_netid = post_body.get('sender_netid', "")
+    receiver_netid = post_body.get('receiver_netid', "")
+
+    sender = User.query.filter_by(netid=sender_netid).first()
+    receiver = User.query.filter_by(netid=receiver_netid).first()
+
+    if not sender:
+        return json.dumps({'success': False, 'error': 'Sender not found!'}), 404
+    elif not receiver:
+        return json.dumps({'success': False, 'error': 'Recipient not found!'}), 404
+    else:
+        req = Request()
+        req.sender.append(sender)
+        req.receiver.append(receiver)
+        db.session.add(req)
+        db.session.commit()
+        return json.dumps({'success': True, 'data': req.serialize()}), 201
+
+# accept or reject a friend request (done by receiver)
+@app.route('/api/request/update/', methods=['POST'])
+def update_user_request():
+    post_body = json.loads(request.data)
+    request_id = post_body.get('request_id', "")
+    user_netid = post_body.get('user_netid', "")
+    user = User.query.filter_by(netid=user_netid).first()
+    if not user:
+        return json.dumps({'success': False, 'error': 'User not found'}), 404
+    req = Request.query.filter_by(id = request_id).first()
+    if not req:
+        return json.dumps({'success': False, 'error': 'Request does not exist!'}), 404
+    for i in req.receiver:
+        r = i
+    if (user is r):
+        accepted = post_body.get('accepted')
+        if(accepted == True):
+            for i in req.sender:
+                s = i
+            friend1 = Friend(
+               netid = r.netid,
+               user_id = s.netid
+            )
+            friend2 = Friend(
+               netid = s.netid,
+               user_id = r.netid
+            )
+            s.met_users.append(friend1)
+            r.met_users.append(friend2)
+            db.session.add(s)
+            db.session.add(r)
+            db.session.add(friend1)
+            db.session.add(friend2)
+            message = 'Friend request accepted!'
+        else:
+            message = 'Friend request rejected!'
+        db.session.delete(req)
+        db.session.commit()
+        return json.dumps({'success': True, 'message': message}), 201
+    return json.dumps({'success': False, 'error': 'User cannot update this request!'}), 409
+
+# delete a request (done by sender)
+@app.route('/api/request/', methods=['DELETE'])
+def delete_request():
+    delete_body = json.loads(request.data)
+    net_id = delete_body.get('netid', '')
+    user = User.query.filter_by(netid = net_id).first()
+    if not user:
+        return json.dumps({'success': False, 'error': 'User not found!'}), 404
+    req_id = delete_body.get('req_id', '')
+    req = Request.query.filter_by(id = req_id).first()
+    if not req:
+        return json.dumps({'success': False, 'error': 'Request not found!'}), 404
+    for i in req.sender:
+        s = i
+    if user is s:
+        db.session.delete(req)
+        db.session.commit()
+        return json.dumps({'success': True, 'message': 'Request deleted!'}), 201
+    return json.dumps({'success': False, 'error': 'User cannot delete this request!'}), 201
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
