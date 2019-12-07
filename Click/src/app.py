@@ -15,6 +15,10 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
+@app.route('/')
+def welcome():
+    return os.environ['GOOGLE_CLIENT_ID'], 200
+
 # get all users
 @app.route('/api/user/all/', methods=['GET'])
 def get_all_users():
