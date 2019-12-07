@@ -193,10 +193,13 @@ def get_recommendation():
     if not user:
         return json.dumps({'success': False, 'error': 'User not found!'}), 404
     else:
+        met_people = []
+        for p in user.met_users:
+            met_people.append(p.netid)
         rec_users = []
         for i in user.interests:
             for u in i.users:
-                if (u is not user and u not in user.met_users and u not in rec_users):
+                if (u is not user and u.netid not in met_people and u not in rec_users):
                     rec_users.append(u)
         res = {'success': True, 'data': [us.serialize() for us in rec_users]}
         return json.dumps(res), 200
@@ -252,6 +255,9 @@ def create_request():
     elif not receiver:
         return json.dumps({'success': False, 'error': 'Recipient not found!'}), 404
     else:
+        for f in sender.met_users:
+            if receiver.netid == f.netid:
+                return json.dumps({'success': False, 'error': 'You are already friends with this user!'}), 409
         req = Request()
         req.sender.append(sender)
         req.receiver.append(receiver)
@@ -276,6 +282,7 @@ def update_user_request():
     if (user is r):
         accepted = post_body.get('accepted')
         if(accepted == True):
+            req.accepted = True
             for i in req.sender:
                 s = i
             friend1 = Friend(
@@ -297,7 +304,7 @@ def update_user_request():
             message = 'Friend request rejected!'
         db.session.delete(req)
         db.session.commit()
-        return json.dumps({'success': True, 'message': message}), 201
+        return json.dumps({'success': True, 'message': message, 'data': req.serialize()}), 201
     return json.dumps({'success': False, 'error': 'User cannot update this request!'}), 409
 
 # delete a request (done by sender)
@@ -317,7 +324,7 @@ def delete_request():
     if user is s:
         db.session.delete(req)
         db.session.commit()
-        return json.dumps({'success': True, 'message': 'Request deleted!'}), 201
+        return json.dumps({'success': True, 'message': 'Request deleted!', 'data': req.serialize()}), 201
     return json.dumps({'success': False, 'error': 'User cannot delete this request!'}), 201
 
 if __name__ == '__main__':
