@@ -1,6 +1,6 @@
 # Click--Backend
 
- The backend for an app that matches people with similar interests and allows them to chat with each other.
+ The backend for an app that matches people with similar interests.
  
  Made for the AppDev Hack Challenge Fall 2019.
  
