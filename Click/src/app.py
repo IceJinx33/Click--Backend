@@ -27,10 +27,8 @@ def get_all_users():
     return json.dumps(res), 200
 
 # get a user by their netid
-@app.route('/api/user/', methods=['GET'])
-def get_user():
-    post_body = json.loads(request.data)
-    net_id = post_body.get('netid', '')
+@app.route('/api/user/<string:net_id>/', methods=['GET'])
+def get_user(net_id):
     user = User.query.filter_by(netid = net_id).first()
     if not user:
         return json.dumps({'success': False, 'error': 'User not found!'}), 404
@@ -38,10 +36,8 @@ def get_user():
         return json.dumps({'success': True, 'data': user.serialize_long()}), 200
 
 # get all of a user's friends
-@app.route('/api/user/friends/', methods=['GET'])
-def get_friends():
-    post_body = json.loads(request.data)
-    net_id = post_body.get('netid', '')
+@app.route('/api/user/friends/<string:net_id>/', methods=['GET'])
+def get_friends(net_id):
     user = User.query.filter_by(netid = net_id).first()
     if not user:
         return json.dumps({'success': False, 'error': 'User not found!'}), 404
@@ -70,10 +66,8 @@ def create_user():
         return json.dumps({'success': False, 'error': 'User already exists!'}), 409
 
 # delete a user
-@app.route('/api/user/', methods=['DELETE'])
-def delete_user():
-    delete_body = json.loads(request.data)
-    net_id = delete_body.get('netid', '')
+@app.route('/api/user/<string:net_id>/', methods=['DELETE'])
+def delete_user(net_id):
     user = User.query.filter_by(netid = net_id).first()
     if not user:
         return json.dumps({'success': False, 'error': 'User not found!'}), 404
@@ -94,10 +88,8 @@ def get_all_interests():
     return json.dumps(res), 200
 
 # get an interest by name
-@app.route('/api/interest/', methods=['GET'])
-def get_interest():
-    post_body = json.loads(request.data)
-    interest_name = post_body.get('interest_name', '')
+@app.route('/api/interest/<string:interest_name>/', methods=['GET'])
+def get_interest(interest_name):
     interest = Interest.query.filter_by(interest_name = interest_name).first()
     if not interest:
         return json.dumps({'success': False, 'error': 'Interest not found!'}), 404
@@ -156,14 +148,11 @@ def add_user_interest():
     return json.dumps({'success': True, 'data': user.serialize()}), 201
 
 # delete an interest tag from a user profile
-@app.route('/api/user/interest/', methods=['DELETE'])
-def delete_user_interest():
-    delete_body = json.loads(request.data)
-    net_id = delete_body.get('netid', '')
+@app.route('/api/user/<string:net_id>/interest/<string:interest_name>/', methods=['DELETE'])
+def delete_user_interest(net_id, interest_name):
     user = User.query.filter_by(netid = net_id).first()
     if not user:
         return json.dumps({'success': False, 'error': 'User not found!'}), 404
-    interest_name = delete_body.get('interest_name', '')
     interest = Interest.query.filter_by(interest_name = interest_name).first()
     if not interest:
         return json.dumps({'success': False, 'error': 'Interest not found!'}), 404
@@ -173,10 +162,8 @@ def delete_user_interest():
     return json.dumps({'success': True, 'data': user.serialize()}), 201
 
 # delete an interest tag
-@app.route('/api/interest/', methods=['DELETE'])
-def delete_interest_tag():
-    delete_body = json.loads(request.data)
-    interest_name = delete_body.get('interest_name', '')
+@app.route('/api/interest/<string:interest_name>/', methods=['DELETE'])
+def delete_interest_tag(interest_name):
     interest = Interest.query.filter_by(interest_name = interest_name).first()
     if not interest:
         return json.dumps({'success': False, 'error': 'Interest not found!'}), 404
@@ -185,10 +172,8 @@ def delete_interest_tag():
     return json.dumps({'success': True, 'data': interest.serialize()}), 201
 
 # get recommended users for a specific user
-@app.route('/api/user/rec/', methods=['GET'])
-def get_recommendation():
-    post_body = json.loads(request.data)
-    net_id = post_body.get('netid')
+@app.route('/api/user/<string:net_id>/rec/', methods=['GET'])
+def get_recommendation(net_id):
     user = User.query.filter_by(netid=net_id).first()
     if not user:
         return json.dumps({'success': False, 'error': 'User not found!'}), 404
@@ -212,30 +197,24 @@ def get_all_requests():
     return json.dumps(res), 200
 
 # get a request by id
-@app.route('/api/request/', methods=['GET'])
-def get_request():
-    post_body = json.loads(request.data)
-    req_id = post_body.get('request_id', '')
-    req = Request.query.filter_by(id = req_id).first()
+@app.route('/api/request/<int:request_id>/', methods=['GET'])
+def get_request(request_id):
+    req = Request.query.filter_by(id = request_id).first()
     if not req:
         return json.dumps({'success': False, 'error': 'Request not found!'}), 404
     else:
         return json.dumps({'success': True, 'data': req.serialize()}), 200
 
 # get all pending requests received by a user
-@app.route('/api/request/user/rec/', methods=['GET'])
-def get_pending_receive_request():
-    post_body = json.loads(request.data)
-    net_id = post_body.get('netid')
+@app.route('/api/request/user/<string:net_id>/rec/', methods=['GET'])
+def get_pending_receive_request(net_id):
     user = User.query.filter_by(netid = net_id).first()
     res = {'success': True, 'data': [r.serialize() for r in user.requests_rec]}
     return json.dumps(res), 200
 
 # get all pending requests sent by a user
-@app.route('/api/request/user/sent/', methods=['GET'])
-def get_pending_sent_request():
-    post_body = json.loads(request.data)
-    net_id = post_body.get('netid')
+@app.route('/api/request/user/<string:net_id>/sent/', methods=['GET'])
+def get_pending_sent_request(net_id):
     user = User.query.filter_by(netid = net_id).first()
     res = {'success': True, 'data': [r.serialize() for r in user.requests_sent]}
     return json.dumps(res), 200
@@ -308,15 +287,12 @@ def update_user_request():
     return json.dumps({'success': False, 'error': 'User cannot update this request!'}), 409
 
 # delete a request (done by sender)
-@app.route('/api/request/', methods=['DELETE'])
-def delete_request():
-    delete_body = json.loads(request.data)
-    net_id = delete_body.get('netid', '')
+@app.route('/api/user/<string:net_id>/request/<int:request_id>/', methods=['DELETE'])
+def delete_request(net_id, request_id):
     user = User.query.filter_by(netid = net_id).first()
     if not user:
         return json.dumps({'success': False, 'error': 'User not found!'}), 404
-    req_id = delete_body.get('req_id', '')
-    req = Request.query.filter_by(id = req_id).first()
+    req = Request.query.filter_by(id = request_id).first()
     if not req:
         return json.dumps({'success': False, 'error': 'Request not found!'}), 404
     for i in req.sender:
