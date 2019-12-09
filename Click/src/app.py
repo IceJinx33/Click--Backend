@@ -301,7 +301,17 @@ def delete_request(net_id, request_id):
         db.session.delete(req)
         db.session.commit()
         return json.dumps({'success': True, 'message': 'Request deleted!', 'data': req.serialize()}), 201
-    return json.dumps({'success': False, 'error': 'User cannot delete this request!'}), 201
+    return json.dumps({'success': False, 'error': 'User cannot delete this request!'}), 404
+
+# delete a request by id
+@app.route('/api/request/<int:request_id>/', methods=['DELETE'])
+def delete_request_by_id(request_id):
+    req = Request.query.filter_by(id = request_id).first()
+    if not req:
+        return json.dumps({'success': False, 'error': 'Request not found!'}), 404
+    db.session.delete(req)
+    db.session.commit()
+    return json.dumps({'success': True, 'message': 'Request deleted!', 'data': req.serialize()}), 201
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
